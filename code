@@ -1,0 +1,110 @@
+import cv2
+import numpy as np
+from fer import FER
+import requests
+
+# Initialize emotion detector
+emotion_detector = FER(mtcnn=True)
+
+# Dictionary of emotion-based stories and motivational quotes
+emotion_stories = {
+    'angry': "Anger is a powerful force that can drive us to create change. Channel your anger into positive actions and you'll turn it into a force for good.",
+    'disgust': "Disgust often signifies our boundaries. Use this feeling to reassess and align your actions with your values.",
+    'fear': "Fear is a signal that you're stepping out of your comfort zone. Embrace it as a sign of growth and adventure.",
+    'happy': "Happiness is like sunshine; it can brighten the day of others. Share your joy and make the world a happier place.",
+    'sad': "A rainy day can seem gloomy, but each raindrop helps flowers grow. Sadness is like rain; it can lead to new growth and a better tomorrow.",
+    'surprise': "Surprises often bring unexpected joys. Embrace the moment and let it teach you something new.",
+    'neutral': "Even a neutral moment can be a blank canvas. Use it to reflect, relax, and recharge."
+}
+
+emotion_quotes = {
+    'angry': [
+        "When you are angry, remember that the best revenge is to be unlike him who performed the injury.",
+        "Anger is a wind which blows out the lamp of the mind."
+    ],
+    'disgust': [
+        "Disgust is the feeling of having one's boundaries violated.",
+        "To avoid problems is to avoid success."
+    ],
+    'fear': [
+        "The only thing we have to fear is fear itself.",
+        "Fear is a natural reaction to moving closer to the truth."
+    ],
+    'happy': [
+        "Happiness depends upon ourselves.",
+        "The purpose of our lives is to be happy."
+    ],
+    'sad': [
+        "Keep your face always toward the sunshine—and shadows will fall behind you.",
+        "The best way to predict the future is to create it."
+    ],
+    'surprise': [
+        "Surprises are often the best parts of life.",
+        "Expect the unexpected."
+    ],
+    'neutral': [
+        "Even a neutral moment can be a blank canvas.",
+        "Use the quiet moments to reflect and recharge."
+    ]
+}
+
+def recommend_story_and_quotes(emotion):
+    story = emotion_stories.get(emotion, "No story available")
+    quotes = emotion_quotes.get(emotion, ["No quotes available"])
+    print(f"Story: {story}")
+    print("Motivational Quotes:")
+    for quote in quotes:
+        print(f"- {quote}")
+
+def search_youtube(emotion):
+    search_query = f"{emotion} music song"
+    search_url = f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
+    print(f"Searching YouTube for: {search_query}")
+    print(f"Search URL: {search_url}")
+
+    # Fetch and parse YouTube search results
+    response = requests.get(search_url)
+    if response.status_code == 200:
+        print("YouTube page fetched successfully!")
+    else:
+        print("Failed to fetch YouTube page.")
+
+# Initialize video capture from webcam
+cap = cv2.VideoCapture(0)
+emotion_processed = False  # Flag to track if an emotion has been processed
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    emotion_label = 'None'  # Default value to avoid NameError
+
+    if not emotion_processed:
+        # Detect emotions in the frame
+        result = emotion_detector.detect_emotions(frame)
+
+        if result:
+            # Extract the dominant emotion
+            dominant_emotion = result[0]['emotions']
+            emotion_label = max(dominant_emotion, key=dominant_emotion.get)
+            
+            if emotion_label:
+                print(f"Emotion detected: {emotion_label}")
+                search_youtube(emotion_label)
+                recommend_story_and_quotes(emotion_label)
+                emotion_processed = True  # Set flag to True after processing emotion
+                
+        # Display the detected emotion on the video frame
+        cv2.putText(frame, f'Emotion: {emotion_label}', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    
+    # Show the video frame
+    cv2.imshow('Emotion-Based Music Recommendation System', frame)
+
+    # Exit if 'q' is pressed
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Release video capture and close windows
+cap.release()
+cv2.destroyAllWindows()
